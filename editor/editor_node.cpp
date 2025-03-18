@@ -5015,7 +5015,7 @@ void EditorNode::progress_add_task(const String &p_task, const String &p_label, 
 		return;
 	} else if (singleton->cmdline_mode) {
 		print_line(p_task + ": begin: " + p_label + " steps: " + itos(p_steps));
-	} else if (singleton->progress_dialog) {
+	} else if (singleton->progress_dialog && EditorNode::get_singleton()->load_editor_layout_done) {
 		singleton->progress_dialog->add_task(p_task, p_label, p_steps, p_can_cancel);
 	}
 }
@@ -5026,7 +5026,7 @@ bool EditorNode::progress_task_step(const String &p_task, const String &p_state,
 	} else if (singleton->cmdline_mode) {
 		print_line("\t" + p_task + ": step " + itos(p_step) + ": " + p_state);
 		return false;
-	} else if (singleton->progress_dialog) {
+	} else if (singleton->progress_dialog && EditorNode::get_singleton()->load_editor_layout_done) {
 		return singleton->progress_dialog->task_step(p_task, p_state, p_step, p_force_refresh);
 	} else {
 		return false;
@@ -5038,7 +5038,7 @@ void EditorNode::progress_end_task(const String &p_task) {
 		return;
 	} else if (singleton->cmdline_mode) {
 		print_line(p_task + ": end");
-	} else if (singleton->progress_dialog) {
+	} else if (singleton->progress_dialog && EditorNode::get_singleton()->load_editor_layout_done) {
 		singleton->progress_dialog->end_task(p_task);
 	}
 }
@@ -5373,8 +5373,8 @@ void EditorNode::save_editor_layout_delayed() {
 }
 
 void EditorNode::_load_editor_layout() {
-	EditorProgress ep("loading_editor_layout", TTR("Loading editor"), 5);
-	ep.step(TTR("Loading editor layout..."), 0, true);
+	EditorProgress *ep = memnew(EditorProgress("loading_editor_layout", TTR("Loading editor"), 5));
+	ep->step(TTR("Loading editor layout..."), 0, true);
 	Ref<ConfigFile> config;
 	config.instantiate();
 	Error err = config->load(EditorPaths::get_singleton()->get_project_settings_dir().path_join("editor_layout.cfg"));
@@ -5394,20 +5394,21 @@ void EditorNode::_load_editor_layout() {
 			_layout_menu_option(overridden_default_layout);
 		}
 	} else {
-		ep.step(TTR("Loading docks..."), 1, true);
+		ep->step(TTR("Loading docks..."), 1, true);
 		editor_dock_manager->load_docks_from_config(config, "docks", true);
 
-		ep.step(TTR("Reopening scenes..."), 2, true);
+		ep->step(TTR("Reopening scenes..."), 2, true);
 		_load_open_scenes_from_config(config);
 
-		ep.step(TTR("Loading central editor layout..."), 3, true);
+		ep->step(TTR("Loading central editor layout..."), 3, true);
 		_load_central_editor_layout_from_config(config);
 
-		ep.step(TTR("Loading plugin window layout..."), 4, true);
+		ep->step(TTR("Loading plugin window layout..."), 4, true);
 		editor_data.set_plugin_window_layout(config);
 
-		ep.step(TTR("Editor layout ready."), 5, true);
+		ep->step(TTR("Editor layout ready."), 5, true);
 	}
+	memdelete_notnull(ep);
 	load_editor_layout_done = true;
 }
 
